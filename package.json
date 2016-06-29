@@ -1,0 +1,23 @@
+{
+  "name": "crazylogin",
+  "version": "1.0.0",
+  "description": "This is a single signon service using mobile phone number",
+  "main": "server.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "node server.js"
+  },
+  "keywords": [
+    "openid-connect"
+  ],
+  "author": "Guanqun Bao",
+  "license": "MIT",
+  "dependencies": {
+    "body-parser": "^1.15.2",
+    "express": "^4.14.0",
+    "express-session": "^1.13.0",
+    "mongoose": "^4.5.2",
+    "morgan": "^1.7.0",
+    "querystring": "^0.2.0"
+  }
+}
