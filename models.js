@@ -1,5 +1,18 @@
-var mongoose = require('mongoose');
-var Schema = mongoose.Schema;
+var mongoose = require('mongoose'),
+    Schema = mongoose.Schema,
+    bcrypt = require('bcrypt'),
+    SALT_WORK_FACTOR = 10;
+
+// Connect to MongoDB
+var connStr = 'mongodb://localhost/crazylogin';
+mongoose.connect(connStr, function(err) {
+    if (err) throw err;
+    console.log('Successfully connected to MongoDB');
+});
+
+/////////////////////////////
+// Define the schemas
+/////////////////////////////
 
 var db = {};
 
@@ -15,10 +28,41 @@ var consentSchema = new Schema({
 // create a Passcode schema
 var passcodeSchema = new Schema({
     phone_number: { type: String, required: true, unique: true, trim: true },
-    password_hash: { type: String, required: true, trim: true }
+    password: { type: String, required: true, trim: true },
+    isUsed: { type: Boolean, default: false }
 }, {
     timestamps: true
 });
+
+passcodeSchema.pre('save', function(next) {
+    var passcode = this;
+
+    // only hash the password if it has been modified (or is new)
+    if (!passcode.isModified('password')) return next();
+
+    // generate a salt
+    bcrypt.genSalt(SALT_WORK_FACTOR, function(err, salt) {
+        if (err) return next(err);
+
+        // hash the password using our new salt
+        bcrypt.hash(passcode.password, salt, function(err, hash) {
+            if (err) return next(err);
+
+            // override the cleartext password with the hashed one
+            passcode.password = hash;
+            next();
+        });
+    });
+});
+
+
+passcodeSchema.methods.comparePassword = function(candidatePassword, cb) {
+    bcrypt.compare(candidatePassword, this.password, function(err, isMatch) {
+        if (err) return cb(err);
+        cb(null, isMatch);
+    });
+};
+
 
 // create a User schema
 var userSchema = new Schema({
@@ -30,9 +74,19 @@ var userSchema = new Schema({
     email: { type: String, required: true, unique: true, trim: true },
     gender: String,
     birthday: Date,
+    address: {
+        addressline1: String,
+        addressline2: String,
+        city: String,
+        state: String,
+        country: String,
+        zipCode: String
+    },
+    password: { type: String, required: true }
 }, {
     timestamps: true
 });
+
 
 // create a Client schema
 var clientSchema = new Schema({
