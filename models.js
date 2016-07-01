@@ -72,6 +72,7 @@ var userSchema = new Schema({
     family_name: String,
     profile: String,
     email: { type: String, required: true, unique: true, trim: true },
+    phone_number: { type: String, required: true, unique: true },
     gender: String,
     birthday: Date,
     address: {
@@ -82,7 +83,7 @@ var userSchema = new Schema({
         country: String,
         zipCode: String
     },
-    password: { type: String, required: true }
+    password: String
 }, {
     timestamps: true
 });

@@ -111,16 +111,28 @@ app.post('/sendCode', function(req, res) {
 
 
 
+var validateUser = function(req, next) {
+    delete req.session.error;
+    db.User.findOne({ phone_number: req.body.phone_number }).exec(function(err, user) {
+        if (!err && user) {
+            return next(null, user);
+        } else {
+            var error = new Error('Username or password incorrect.');
+            return next(error);
+        }
+    });
+};
+
 
 
 
 // Redirect to login page
 app.get('/', function(req, res) {
-    res.redirect('/login');
+    res.redirect('/users/login');
 });
 
 // Load login form 
-app.get('/login', function(req, res, next) {
+app.get('/users/login', function(req, res, next) {
     var head = '<head><title>Login</title></head>';
     var inputs = '<input type="text" name="email" placeholder="Enter Email"/><input type="password" name="password" placeholder="Enter Password"/>';
     var error = req.session.error ? '<div>' + req.session.error + '</div>' : '';
@@ -128,130 +140,78 @@ app.get('/login', function(req, res, next) {
     res.send('<html>' + head + body + '</html>');
 });
 
+
+
 // Authenticate user using phone number and SMS!
 
+app.post('/users/login', function(req, res) {
 
-function restrict(req, res, next) {
-    if (req.session.user) {
-        next();
-    } else {
-        req.session.error = 'Access denied!';
-        res.redirect('/login');
-    }
-}
-
-// // create a user a new user
-// var testPasscode = new db.Passcode({
-//     phone_number: '12331312',
-//     password: 'Password123'
-// });
-
-
-// // save user to database
-// testPasscode.save(function(err) {
-//     if (err) throw err;
-
-//     // fetch user and test password verification
-//     db.Passcode.findOne({ phone_number: '12321312' }, function(err, passcode) {
-//         if (err) throw err;
-
-//         // test a matching password
-//         passcode.comparePassword('Password123', function(err, isMatch) {
-//             if (err) throw err;
-//             console.log('Password123:', isMatch); // -> Password123: true
-//         });
-
-//         // test a failing password
-//         passcode.comparePassword('123Password', function(err, isMatch) {
-//             if (err) throw err;
-//             console.log('123Password:', isMatch); // -> 123Password: false
-//         });
-//     });
-// });
-
-// testPasscode.findOneAndUpdate({
-//     phone_number: testPasscode.phone_number
-// }, {
-//     $set: { password: req.body.title }
-// }, { upsert: true }, function(err, newBook) {
-//     if (err) {
-//         res.send('error updating ');
-//     } else {
-//         console.log(newBook);
-//         res.send(newBook);
-//     }
-// });
-
-// User login
-// app.post('users/login', function(req, res) {
-//     var body = _.pick(req.body, 'mdn', 'password');
-//     authenticate(req.body.username, req.body.password, function(err, user) {
-//         if (user) {
-//             // Regenerate session when signing in
-//             // to prevent fixation
-//             req.session.regenerate(function() {
-//                 // Store the user's primary key
-//                 // in the session store to be retrieved,
-//                 // or in this case the entire user object
-//                 req.session.user = user;
-//                 req.session.success = 'Authenticated as ' + user.name + ' click to <a href="/logout">logout</a>. ' + ' You may now access <a href="/restricted">/restricted</a>.';
-//                 res.redirect('back');
-//             });
-//         } else {
-//             req.session.error = 'Authentication failed, please check your ' + ' username and password.' + ' (use "tj" and "foobar")';
-//             res.redirect('/login');
-//         }
-//     });
-// });
+    var body = _.pick(req.body, 'phone_number', 'password');
+    // test a matching password
+    db.Passcode.findOne({ phone_number: body.phone_number }, function(err, passcode) {
+        if (err || !passcode) {
+            req.session.error = 'Authentication failed, please check your username and password.';
+            res.status(401).json(err);
+        }
+        // test a matching password
+        passcode.comparePassword(body.password, function(err, isMatch) {
+            if (err || !isMatch) {
+                req.session.error = 'Your username and password are not match.';
+                res.status(401).json(err);
+            }
+            db.User.findOne({ phone_number: passcode.phone_number }, function(err, user) {
+                if (err || !user) {
+                    req.session.error = 'Authentication failed, please check your username and password.';
+                    res.status(401).json(err);
+                }
+                req.session.regenerate(function() {
+                    req.session.user = user;
+                    req.session.success = 'Authenticated as ' + user.phone_number + ' click to <a href="/logout">logout</a>. ' + ' You may now access <a href="/restricted">/restricted</a>.';
+                    res.redirect('/consent');
+                });
+            });
+        });
+    });
+});
 
 
-// POST /users/login
-// app.post('/users/login', function(req, res) {
+// Create a new user account
+app.post('/users', function(req, res) {
+    var body = _.pick(req.body, 'email', 'phone_number', 'password');
+    console.log('body: ' + JSON.stringify(body));
 
-//     var body = _.pick(req.body, 'mdn', 'password');
+    db.Passcode.findOne({ phone_number: body.phone_number }, function(err, passcode) {
+        if (err || !passcode) {
+            req.session.error = 'Authentication failed, please check your username and password.';
+            res.status(401).json(err);
+        } else {
+            // test a matching password
+            passcode.comparePassword(body.password, function(err, isMatch) {
+                if (err || !isMatch) {
+                    console.log('not match');
+                    req.session.error = 'Your username and password are not match.';
+                    return res.status(401).json(err);
+                }
 
-//     db.password.authenticate(body).then(function(password) {
-//         return db.user.findByMdn(body.mdn);
-//     }).then(function(user) {
-
-//         req.session.regenerate(function() {
-//             // Store the user's primary key
-//             // in the session store to be retrieved,
-//             // or in this case the entire user object
-//             req.session.user = user;
-//             req.session.success = 'Authenticated as ' + user.mdn + ' click to <a href="/logout">logout</a>. ' + ' You may now access <a href="/restricted">/restricted</a>.';
-//             res.redirect('/chat');
-//         });
-
-//         //res.json(user.toPublicJSON());
-//     }).catch(function(error) {
-//         req.session.error = 'Authentication failed, please check your username and password.';
-//         res.status(401).json(error);
-//     });
-
-// });
-
-
-
-
-
-// app.post('/client', function(req, res) {
-//     var newClient = new db.Client();
-
-//     newClient.client_id = req.body.client_id;
-//     newClient.client_secret = req.body.client_secret;
-//     newClient.redirect_uris = req.body.redirect_uris;
-
-//     newClient.save(function(err, client) {
-//         if (err) {
-//             res.send('error saving client');
-//         } else {
-//             console.log(client);
-//             res.send(client);
-//         }
-//     });
-// });
-
+                var newUser = new db.User({
+                    email: body.email,
+                    phone_number: body.phone_number
+                });
+                newUser.save(function(err, user) {
+                    if (err || !user) {
+                        req.session.error = 'Your account can not be created.';
+                        return res.status(401).json(err);
+                    }
+                    req.session.regenerate(function() {
+                        req.session.user = user;
+                        req.session.success = 'Authenticated as ' + user.phone_number + ' click to <a href="/logout">logout</a>. ' + ' You may now access <a href="/restricted">/restricted</a>.';
+                        return res.redirect('/consent');
+                    });
+                });
+            });
+        }
+    });
+});
 
 
 
