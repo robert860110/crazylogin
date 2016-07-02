@@ -55,14 +55,12 @@ passcodeSchema.pre('save', function(next) {
     });
 });
 
-
 passcodeSchema.methods.comparePassword = function(candidatePassword, cb) {
     bcrypt.compare(candidatePassword, this.password, function(err, isMatch) {
         if (err) return cb(err);
         cb(null, isMatch);
     });
 };
-
 
 // create a User schema
 var userSchema = new Schema({
@@ -73,8 +71,9 @@ var userSchema = new Schema({
     profile: String,
     email: { type: String, required: true, unique: true, trim: true },
     phone_number: { type: String, required: true, unique: true },
-    gender: String,
+    gender: { type: String, enum: ['M', 'F'] },
     birthday: Date,
+    password: String,
     address: {
         addressline1: String,
         addressline2: String,
@@ -82,12 +81,10 @@ var userSchema = new Schema({
         state: String,
         country: String,
         zipCode: String
-    },
-    password: String
+    }
 }, {
     timestamps: true
 });
-
 
 // create a Client schema
 var clientSchema = new Schema({

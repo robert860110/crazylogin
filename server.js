@@ -16,7 +16,7 @@ var express = require('express'),
     twilio = require('twilio'),
     twilioClient = new twilio.RestClient('AC9c68ea35aee62e08292acd2bcfcf49b6', '938c9c574f9939b1736da9b1a3345c3c');
 
-//Create express application
+// Create express application
 var app = express();
 var PORT = process.env.PORT || 3000;
 
@@ -29,7 +29,7 @@ app.use(expressSession({
     secret: 'shhhh, very secret'
 }));
 
-//Define scopes
+// Define scopes
 var scopes = {
     openid: 'Informs the Authorization Server that the Client is making an OpenID Connect request.',
     profile: 'Access to the End-User\'s default profile Claims.',
@@ -59,7 +59,7 @@ app.post('/sendCode', function(req, res) {
             if (err) {
                 return res.status(400).json(err);
             } else if (!passcode) {
-                // if no record found, create a new record
+                // if no record found, create a new MDN->OTP record
                 var newPasscode = new db.Passcode({
                     password: password.toString(),
                     phone_number: body.phone_number.toString()
@@ -83,7 +83,7 @@ app.post('/sendCode', function(req, res) {
                 });
 
             } else {
-                // if an existing record is found, update the existing record
+                // if an existing record is found, update the existing MDN->OTP record
                 passcode.password = password.toString();
 
                 passcode.save(function(err, passcode) {
@@ -140,11 +140,11 @@ app.get('/users/login', function(req, res, next) {
     res.send('<html>' + head + body + '</html>');
 });
 
-
-
 // Authenticate user using phone number and SMS!
-
 app.post('/users/login', function(req, res) {
+
+    delete req.session.error;
+    delete req.session.success;
 
     var body = _.pick(req.body, 'phone_number', 'password');
     // test a matching password
@@ -161,19 +161,19 @@ app.post('/users/login', function(req, res) {
             }
             db.User.findOne({ phone_number: passcode.phone_number }, function(err, user) {
                 if (err || !user) {
-                    req.session.error = 'Authentication failed, please check your username and password.';
+                    req.session.error = 'Access denied!';
                     res.status(401).json(err);
                 }
                 req.session.regenerate(function() {
-                    req.session.user = user;
-                    req.session.success = 'Authenticated as ' + user.phone_number + ' click to <a href="/logout">logout</a>. ' + ' You may now access <a href="/restricted">/restricted</a>.';
+                    req.session.user = user._id;
+                    req.session.success = 'Authenticated as ' + user.phone_number;
+                    console.log(req.session);
                     res.redirect('/consent');
                 });
             });
         });
     });
 });
-
 
 // Create a new user account
 app.post('/users', function(req, res) {
@@ -192,7 +192,6 @@ app.post('/users', function(req, res) {
                     req.session.error = 'Your username and password are not match.';
                     return res.status(401).json(err);
                 }
-
                 var newUser = new db.User({
                     email: body.email,
                     phone_number: body.phone_number
