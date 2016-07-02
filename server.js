@@ -151,24 +151,27 @@ app.post('/users/login', function(req, res) {
     db.Passcode.findOne({ phone_number: body.phone_number }, function(err, passcode) {
         if (err || !passcode) {
             req.session.error = 'Authentication failed, please check your username and password.';
-            res.status(401).json(err);
+            console.log(req.session);
+            return res.status(401).json(err);
         }
         // test a matching password
         passcode.comparePassword(body.password, function(err, isMatch) {
             if (err || !isMatch) {
                 req.session.error = 'Your username and password are not match.';
-                res.status(401).json(err);
+                console.log(req.session);
+                return res.status(401).json(err);
             }
             db.User.findOne({ phone_number: passcode.phone_number }, function(err, user) {
                 if (err || !user) {
                     req.session.error = 'Access denied!';
-                    res.status(401).json(err);
+                    console.log(req.session);
+                    return res.status(401).json(err);
                 }
                 req.session.regenerate(function() {
                     req.session.user = user._id;
                     req.session.success = 'Authenticated as ' + user.phone_number;
                     console.log(req.session);
-                    res.redirect('/consent');
+                    return res.redirect('/consent');
                 });
             });
         });
