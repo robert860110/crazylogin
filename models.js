@@ -103,9 +103,9 @@ var clientSchema = new Schema({
 // create a Auth schema
 var authSchema = new Schema({
     client: { type: Schema.ObjectId, ref: 'Client' },
-    scope: { type: Array, required: true},
+    scope: Array,
     user: { type: Schema.ObjectId, ref: 'User' },
-    sub: { type: String, required: true },
+    sub: String,
     code: { type: String, required: true },
     redirectUri: { type: String, required: true },
     responseType: { type: String, required: true },

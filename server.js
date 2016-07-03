@@ -6,6 +6,7 @@
 // Module dependencies
 var express = require('express'),
     url = require('url'),
+    jwt = require('jwt-simple'),
     _ = require('underscore'),
     crypto = require('crypto'),
     expressSession = require('express-session'),
@@ -260,51 +261,53 @@ app.get('/users/authorize', function(req, res) {
                             // Gnerate Response
                             switch (reqParameters.response_type) {
                                 case 'code':
-                                    var createToken = function() {
-                                        var token = crypto.createHash('md5').update(reqParameters.client_id).update(Math.random() + '').digest('hex');
-                                        db.Auth.findOne({ code: token }, function(err, auth) {
-                                            if (!auth) {
-                                                setToken(token);
-                                            } else {
-                                                createToken();
-                                            }
-                                        });
-                                    };
-                                    var setToken = function(token) {
-                                        var newAuth = new db.Auth({
-                                            client: req.session.client_id,
-                                            scope: reqScope,
-                                            user: req.session.user,
-                                            sub: req.session.sub || req.session.user,
-                                            code: token,
-                                            redirectUri: reqParameters.redirect_uri,
-                                            responseType: reqParameters.response_type,
-                                            status: 'created'
-                                        });
 
-                                        newAuth.save(function(err, auth) {
-                                            if (err) {
-                                                return res.status(400).send('Can not create auth code');
-                                            } else {
-                                                setTimeout(function() {
-                                                    db.Auth.findOne({ code: token }, function(err, auth) {
-                                                        if (auth && auth.status == 'created') {
-                                                            auth.destroy();
-                                                        }
-                                                    });
-                                                }, 1000 * 60 * 10); //10 minutes
-                                                // Redirect the user to client page with auth code
-                                                return res.redirect(reqParameters.redirect_uri + '?' + 'code=' + auth.code);
-                                            }
-                                        });
-                                    };
-                                    createToken();
+                                    var authCode = crypto.createHash('md5').update(reqParameters.client_id).update(Math.random() + '').digest('hex');
+
+                                    // db.Auth.findOne({ code: token }, function(err, auth) {
+                                    //     if (!auth) {
+                                    //         setToken(token);
+                                    //     } else {
+                                    //         createToken();
+                                    //     }
+                                    // });
+
+                                    var newAuth = new db.Auth({
+                                        client: req.session.client_id,
+                                        scope: reqScope,
+                                        user: req.session.user,
+                                        sub: req.session.sub || req.session.user,
+                                        code: authCode,
+                                        redirectUri: reqParameters.redirect_uri,
+                                        responseType: reqParameters.response_type,
+                                        status: 'created'
+                                    });
+
+                                    console.log(newAuth);
+                                    newAuth.isNew = true;
+
+
+                                    newAuth.save(function(err, auth) {
+                                        if (err) {
+                                            return res.status(400).json(err);
+                                        } else {
+                                            setTimeout(function() {
+                                                db.Auth.findOne({ code: authCode }, function(err, auth) {
+                                                    if (auth && auth.status == 'created') {
+                                                        auth.destroy();
+                                                    }
+                                                });
+                                            }, 1000 * 60 * 10); //10 minutes
+                                            // Redirect the user to client page with auth code
+                                            return res.redirect(reqParameters.redirect_uri + '?' + 'code=' + auth.code);
+                                        }
+                                    });
+
                                     break;
 
                                 case 'id_token':
 
                             }
-
 
 
                         }
@@ -355,6 +358,113 @@ app.post('/users/consent', function(req, res) {
         }
     });
 
+});
+
+// Parse authorization header
+function parse_authorization(authorization) {
+    if (!authorization)
+        return null;
+
+    var parts = authorization.split(' ');
+
+    if (parts.length != 2 || parts[0] != 'Basic')
+        return null;
+
+    var creds = new Buffer(parts[1], 'base64').toString(),
+        i = creds.indexOf(':');
+
+    if (i == -1)
+        return null;
+
+    var username = creds.slice(0, i);
+    password = creds.slice(i + 1);
+
+    return [username, password];
+}
+
+// Token endpoint
+app.post('/users/token', function(req, res) {
+
+    var client_id = req.body.client_id;
+    var client_secret = req.body.client_secret;
+
+    if (!client_id || !client_secret) {
+        var authorization = parse_authorization(req.headers.authorization);
+        if (authorization) {
+            client_id = authorization[0];
+            client_secret = authorization[1];
+        }
+    }
+    if (!client_id || !client_secret) {
+        return res.status(400).send('Missing client credentials found');
+    } else {
+        db.Client.findOne({ client_id: client_id, client_secret: client_secret }).exec(function(err, client) {
+            if (err || !client) {
+                return res.status(400).send('No matched client credentials are found');
+            } else {
+                var clientName = client.name;
+
+                switch (req.body.grant_type) {
+                    case 'authorization_code':
+                        db.Auth.findOne({ code: req.body.code }).exec(function(err, auth) {
+                            if (err || !auth) {
+                                return res.status(400).send('auth error');
+                            }
+                            if (auth.responseType != 'code') {
+                                return res.status(400).send('grant_type error');
+                            }
+                            if ((auth.redirectUri || req.body.redirect_uri) && auth.redirectUri != req.body.redirect_uri) {
+                                return res.status(400).send('redirect_uri error');
+                            }
+
+                            /////////////////////////////////
+                            // Generate token
+                            /////////////////////////////////
+
+                            var issueTime = Math.round(new Date().getTime() / 1000);
+                            var id_token = {
+                                iss: req.protocol + '://' + req.headers.host,
+                                sub: auth.user || null,
+                                aud: clientName,
+                                exp: issueTime + 3600,
+                                iat: issueTime
+                            };
+                            var token = crypto.createHash('md5').update(Math.random() + '').digest('hex');
+                            var newAccess = new db.Access({
+                                token: token,
+                                type: 'Bearer',
+                                expiresIn: 3600,
+                                user: auth.user,
+                                client: client._id,
+                                idToken: jwt.encode(id_token, client_secret),
+                                scope: auth.scope,
+                                auth: auth._id || null
+                            });
+                            newAccess.save(function(err, access) {
+                                if (err || !access) {
+                                    return res.status(400).json(err);
+                                } else {
+                                    setTimeout(function() {
+                                        access.destroy();
+                                    }, 1000 * 3600); //1 hour
+
+                                    return res.json({
+                                        access_token: access.token,
+                                        token_type: access.type,
+                                        expires_in: access.expiresIn,
+                                        id_token: access.idToken
+                                    });
+                                }
+
+                            });
+
+                        });
+                        break;
+
+                }
+            }
+        });
+    }
 });
 
 
