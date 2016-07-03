@@ -127,37 +127,47 @@ app.post('/users/login', function(req, res) {
     delete req.session.error;
     delete req.session.success;
 
-    var body = _.pick(req.body, 'phone_number', 'password');
-    // test a matching password
-    db.Passcode.findOne({ phone_number: body.phone_number }, function(err, passcode) {
-        if (err || !passcode) {
-            req.session.error = 'Authentication failed, please check your username and password.';
-            console.log(req.session);
-            return res.status(401).json(err);
-        }
+    if (req.session.user && req.session.authorize_url) {
+        return res.redirect(req.session.authorize_url);
+    } else if (!req.session.user && req.session.authorize_url) {
+
+        var body = _.pick(req.body, 'phone_number', 'password');
         // test a matching password
-        passcode.comparePassword(body.password, function(err, isMatch) {
-            if (err || !isMatch) {
-                req.session.error = 'Your username and password are not match.';
-                console.log(req.session);
+        db.Passcode.findOne({ phone_number: body.phone_number }, function(err, passcode) {
+            if (err || !passcode) {
+                req.session.error = 'Authentication failed, please check your username and password.';
+                //console.log(req.session);
                 return res.status(401).json(err);
             }
-            db.User.findOne({ phone_number: passcode.phone_number }, function(err, user) {
-                if (err || !user) {
-                    req.session.error = 'Access denied!';
-                    console.log(req.session);
+            // test a matching password
+            passcode.comparePassword(body.password, function(err, isMatch) {
+                if (err || !isMatch) {
+                    req.session.error = 'Your username and password are not match.';
+                    //console.log(req.session);
                     return res.status(401).json(err);
                 }
-                req.session.regenerate(function() {
+                db.User.findOne({ phone_number: passcode.phone_number }, function(err, user) {
+                    if (err || !user) {
+                        req.session.error = 'Access denied!';
+                        //console.log(req.session);
+                        return res.status(401).json(err);
+                    }
+                    // req.session.regenerate(function() {
+                    //     req.session.user = user._id;
+                    //     req.session.success = 'Authenticated as ' + user.phone_number;
+                    //     console.log(req.session);
+                    //     console.log(req.session.authorize_url);
+                    //     return res.redirect(req.session.authorize_url);
+                    //     //return res.redirect('/consent');
+                    // });
+
                     req.session.user = user._id;
                     req.session.success = 'Authenticated as ' + user.phone_number;
-                    console.log(req.session);
-                    return res.json(user);
-                    //return res.redirect('/consent');
+                    return res.redirect(req.session.authorize_url);
                 });
             });
         });
-    });
+    }
 });
 
 // Create a new user account
@@ -202,6 +212,10 @@ app.post('/users', function(req, res) {
 // Create authorize endpoint
 app.get('/users/authorize', function(req, res) {
     var reqParameters = querystring.parse(url.parse(req.url).query);
+    req.session.authorize_url = req.url;
+    if (!req.session.user) {
+        return res.redirect('/users/login');
+    }
 
     if (reqParameters.hasOwnProperty('client_id', 'redirect_uri', 'response_type', 'scope')) {
 
@@ -231,17 +245,16 @@ app.get('/users/authorize', function(req, res) {
 
                     req.session.client_id = client._id;
                     req.session.scope = reqScope;
+                    req.session.redirect_uri = reqParameters.redirect_uri;
                     req.session.client_secret = client.client_secret;
 
-                    db.Consent.findOne({ client_id: client.client_id, user: req.session.user }).exec(function(err, consent) {
+                    console.log('clientid: ' + req.session.client_id);
+                    console.log('user: ' + req.session.user);
+
+                    db.Consent.findOne({ client: client._id, user: req.session.user }).exec(function(err, consent) {
                         if (err) {
                             return res.status(400).send('Internal Error');
                         } else if (!consent) {
-                            // var newConsent = new db.Consent({
-                            //     user: req.session.user,
-                            //     client: req.session.client_id,
-                            //     scope: reqScope
-                            // });
                             return res.redirect('/users/consent');
                         } else {
                             // Gnerate Response
@@ -267,8 +280,12 @@ app.get('/users/authorize', function(req, res) {
                                             redirectUri: reqParameters.redirect_uri,
                                             responseType: reqParameters.response_type,
                                             status: 'created'
-                                        }).exec(function(err, auth) {
-                                            if (!err && auth) {
+                                        });
+
+                                        newAuth.save(function(err, auth) {
+                                            if (err) {
+                                                return res.status(400).send('Can not create auth code');
+                                            } else {
                                                 setTimeout(function() {
                                                     db.Auth.findOne({ code: token }, function(err, auth) {
                                                         if (auth && auth.status == 'created') {
@@ -277,12 +294,9 @@ app.get('/users/authorize', function(req, res) {
                                                     });
                                                 }, 1000 * 60 * 10); //10 minutes
                                                 // Redirect the user to client page with auth code
-                                                return res.redirect(reqParameters.redirect_uri + auth.code);
-                                            } else {
-                                                return res.status(400).send('Can not create auth code');
+                                                return res.redirect(reqParameters.redirect_uri + '?' + 'code=' + auth.code);
                                             }
                                         });
-
                                     };
                                     createToken();
                                     break;
@@ -324,6 +338,22 @@ app.get('/users/consent', function(req, res, next) {
 // User submit consent form
 app.post('/users/consent', function(req, res) {
 
+    var newConsent = new db.Consent({
+        user: req.session.user,
+        client: req.session.client_id,
+        scope: req.session.scope
+    });
+
+    console.log(req.session);
+
+    newConsent.save(function(err, consent) {
+        if (err) {
+            return res.json(err);
+        } else {
+            console.log(consent);
+            return res.redirect(req.session.authorize_url);
+        }
+    });
 
 });
 
