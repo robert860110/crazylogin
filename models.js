@@ -18,9 +18,9 @@ var db = {};
 
 // create a Consent schema
 var consentSchema = new Schema({
-    user: { type: Schema.ObjectId, ref: 'User' },
-    redirect_uris: { type: Array, required: true },
-    credentialsFlow: { type: Boolean, default: false }
+    user: { type: Schema.ObjectId, ref: 'User', required: true },
+    client: { type: Schema.ObjectId, ref: 'Client', required: true },
+    scope: Array
 }, {
     timestamps: true
 });
@@ -87,6 +87,7 @@ var userSchema = new Schema({
 });
 
 // create a Client schema
+
 var clientSchema = new Schema({
     client_id: { type: String, required: true, unique: true },
     client_secret: { type: String, required: true, unique: true },
@@ -97,6 +98,7 @@ var clientSchema = new Schema({
 }, {
     timestamps: true
 });
+
 
 // create a Auth schema
 var authSchema = new Schema({

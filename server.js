@@ -1,12 +1,13 @@
 /**
  * Author: Guanqun Bao 6-17-2016
  * Email: guanqun.bao@gmail.com
- * Module dependencies.
  */
 
+// Module dependencies
 var express = require('express'),
+    url = require('url'),
     _ = require('underscore'),
-    bcrypt = require('bcrypt'),
+    crypto = require('crypto'),
     expressSession = require('express-session'),
     querystring = require('querystring'),
     logger = require('morgan'),
@@ -28,23 +29,19 @@ app.use(expressSession({
     saveUninitialized: false, // don't create session until something stored
     secret: 'shhhh, very secret'
 }));
+app.use(express.static(__dirname + '/public'));
 
 // Define scopes
-var scopes = {
-    openid: 'Informs the Authorization Server that the Client is making an OpenID Connect request.',
-    profile: 'Access to the End-User\'s default profile Claims.',
-    email: 'Access to the email and email_verified Claims.',
-    address: 'Access to the address Claim.',
-    phone: 'Access to the phone_number and phone_number_verified Claims.',
-    offline_access: 'Grants access to the End-User\'s UserInfo Endpoint even when the End-User is not present (not logged in).'
-};
+
+var scopes = ['openid', 'profile', 'email', 'address', 'phone', 'offline_access'];
+var response_types = ['code', 'token', 'id_token'];
 
 
 //////////////////////////////////////////
 // Application route
 //////////////////////////////////////////
 
-// Send a One Time Password to user's phone number 
+// Send a One Time Password to user's phone number through SMS
 app.post('/sendCode', function(req, res) {
 
     var body = _.pick(req.body, 'phone_number');
@@ -109,23 +106,6 @@ app.post('/sendCode', function(req, res) {
 });
 
 
-
-
-var validateUser = function(req, next) {
-    delete req.session.error;
-    db.User.findOne({ phone_number: req.body.phone_number }).exec(function(err, user) {
-        if (!err && user) {
-            return next(null, user);
-        } else {
-            var error = new Error('Username or password incorrect.');
-            return next(error);
-        }
-    });
-};
-
-
-
-
 // Redirect to login page
 app.get('/', function(req, res) {
     res.redirect('/users/login');
@@ -133,11 +113,12 @@ app.get('/', function(req, res) {
 
 // Load login form 
 app.get('/users/login', function(req, res, next) {
-    var head = '<head><title>Login</title></head>';
-    var inputs = '<input type="text" name="email" placeholder="Enter Email"/><input type="password" name="password" placeholder="Enter Password"/>';
-    var error = req.session.error ? '<div>' + req.session.error + '</div>' : '';
-    var body = '<body><h1>Login</h1><form method="POST">' + inputs + '<input type="submit"/></form>' + error;
-    res.send('<html>' + head + body + '</html>');
+    // var head = '<head><title>Login</title></head>';
+    // var inputs = '<input type="text" name="phone_number" placeholder="Enter phone number"/><br><input type="password" name="password" placeholder="Enter Password"/>';
+    // var error = req.session.error ? '<div>' + req.session.error + '</div>' : '';
+    // var body = '<body><h1>Login</h1><form method="POST">' + inputs + '<input type="submit"/></form>' + error;
+    // res.send('<html>' + head + body + '</html>');
+    res.sendFile(__dirname + '/public' + '/login.html');
 });
 
 // Authenticate user using phone number and SMS!
@@ -171,7 +152,8 @@ app.post('/users/login', function(req, res) {
                     req.session.user = user._id;
                     req.session.success = 'Authenticated as ' + user.phone_number;
                     console.log(req.session);
-                    return res.redirect('/consent');
+                    return res.json(user);
+                    //return res.redirect('/consent');
                 });
             });
         });
@@ -212,6 +194,85 @@ app.post('/users', function(req, res) {
                 });
             });
         }
+    });
+});
+
+
+
+// Create authorize endpoint
+app.get('/users/authorize', function(req, res) {
+    var reqParameters = querystring.parse(url.parse(req.url).query);
+
+    if (reqParameters.hasOwnProperty('client_id', 'redirect_uri', 'response_type', 'scope')) {
+        // Check response_type
+        // switch (reqParameters.response_type) {
+        //     case 'code':
+        //     case 'token':
+        //     case 'id_token':
+        //         break;
+        //     default:
+        //         return res.status(400).send('unsupported_response_type: ' + parsedParameters.response_type);
+        // }
+
+        if (response_types.indexOf(reqParameters.response_type) < 0) {
+            return res.status(400).send('unsupported_response_type: ' + reqParameters.response_type);
+        } 
+
+        // Check client_id, redirect_uri and scope
+        db.Client.findOne({
+                client_id: reqParameters.client_id
+            })
+            .exec(function(err, client) {
+                if (err || !client) {
+                    return res.status(400).send('Invalid client_id');
+                } else {
+
+
+
+                    req.session.client_id = client._id;
+                    req.session.client_secret = client.client_secret;
+                    console.log(client);
+                    return res.json(client);
+                }
+            });
+
+    } else return res.status(400).send('Missing request parameters');
+
+
+});
+
+
+
+// Create a client
+app.post('/client/register', function(req, res) {
+
+    delete req.session.error;
+
+    var body = _.pick(req.body, 'name', 'redirect_uris');
+
+    var sha256_1 = crypto.createHash('sha256');
+    sha256_1.update(body.name);
+    body.client_id = sha256_1.digest('hex');
+
+    var sha256_2 = crypto.createHash('sha256');
+    sha256_2.update(Math.random().toString());
+    body.client_secret = sha256_2.digest('hex');
+
+    var newClient = new db.Client({
+        name: body.name,
+        client_id: body.client_id,
+        //client_id: req.session.client_id,
+        client_secret: body.client_secret,
+        //client_secret: req.session.client_secret,
+        redirect_uris: body.redirect_uris,
+        user: req.session.user
+    });
+
+    newClient.save(function(err, client) {
+        if (err || !client) {
+            return res.status(401).json(err);
+        } else return res.json(client);
+        // return res.redirect('/client/' + client._id);
     });
 });
 
