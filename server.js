@@ -204,19 +204,17 @@ app.get('/users/authorize', function(req, res) {
     var reqParameters = querystring.parse(url.parse(req.url).query);
 
     if (reqParameters.hasOwnProperty('client_id', 'redirect_uri', 'response_type', 'scope')) {
-        // Check response_type
-        // switch (reqParameters.response_type) {
-        //     case 'code':
-        //     case 'token':
-        //     case 'id_token':
-        //         break;
-        //     default:
-        //         return res.status(400).send('unsupported_response_type: ' + parsedParameters.response_type);
-        // }
 
-        if (response_types.indexOf(reqParameters.response_type) < 0) {
+        var reqScope = reqParameters.scope.split(" ");
+        var isScopeValid = reqScope.every(function(val) {
+            return scopes.indexOf(val) >= 0;
+        });
+
+        if (!isScopeValid) {
+            return res.status(400).send('scope is not valid');
+        } else if (response_types.indexOf(reqParameters.response_type) < 0) {
             return res.status(400).send('unsupported_response_type: ' + reqParameters.response_type);
-        } 
+        }
 
         // Check client_id, redirect_uri and scope
         db.Client.findOne({
@@ -227,20 +225,107 @@ app.get('/users/authorize', function(req, res) {
                     return res.status(400).send('Invalid client_id');
                 } else {
 
-
+                    if (client.redirect_uris.indexOf(reqParameters.redirect_uri) < 0) {
+                        return res.status(400).send('Invalid redirect_uri');
+                    }
 
                     req.session.client_id = client._id;
+                    req.session.scope = reqScope;
                     req.session.client_secret = client.client_secret;
+
+                    db.Consent.findOne({ client_id: client.client_id, user: req.session.user }).exec(function(err, consent) {
+                        if (err) {
+                            return res.status(400).send('Internal Error');
+                        } else if (!consent) {
+                            // var newConsent = new db.Consent({
+                            //     user: req.session.user,
+                            //     client: req.session.client_id,
+                            //     scope: reqScope
+                            // });
+                            return res.redirect('/users/consent');
+                        } else {
+                            // Gnerate Response
+                            switch (reqParameters.response_type) {
+                                case 'code':
+                                    var createToken = function() {
+                                        var token = crypto.createHash('md5').update(reqParameters.client_id).update(Math.random() + '').digest('hex');
+                                        db.Auth.findOne({ code: token }, function(err, auth) {
+                                            if (!auth) {
+                                                setToken(token);
+                                            } else {
+                                                createToken();
+                                            }
+                                        });
+                                    };
+                                    var setToken = function(token) {
+                                        var newAuth = new db.Auth({
+                                            client: req.session.client_id,
+                                            scope: reqScope,
+                                            user: req.session.user,
+                                            sub: req.session.sub || req.session.user,
+                                            code: token,
+                                            redirectUri: reqParameters.redirect_uri,
+                                            responseType: reqParameters.response_type,
+                                            status: 'created'
+                                        }).exec(function(err, auth) {
+                                            if (!err && auth) {
+                                                setTimeout(function() {
+                                                    db.Auth.findOne({ code: token }, function(err, auth) {
+                                                        if (auth && auth.status == 'created') {
+                                                            auth.destroy();
+                                                        }
+                                                    });
+                                                }, 1000 * 60 * 10); //10 minutes
+                                                // Redirect the user to client page with auth code
+                                                return res.redirect(reqParameters.redirect_uri + auth.code);
+                                            } else {
+                                                return res.status(400).send('Can not create auth code');
+                                            }
+                                        });
+
+                                    };
+                                    createToken();
+                                    break;
+
+                                case 'id_token':
+
+                            }
+
+
+
+                        }
+
+                    });
+
+
                     console.log(client);
-                    return res.json(client);
+                    // return res.json(client);
                 }
             });
 
     } else return res.status(400).send('Missing request parameters');
 
-
 });
 
+
+// Render user consent form
+app.get('/users/consent', function(req, res, next) {
+    var head = '<head><title>Consent</title></head>';
+    var lis = [];
+    for (var i in req.session.scope) {
+        lis.push('<li><b>' + i + '</b>: ' + req.session.scope[i] + '</li>');
+    }
+    var ul = '<ul>' + lis.join('') + '</ul>';
+    var error = req.session.error ? '<div>' + req.session.error + '</div>' : '';
+    var body = '<body><h1>Consent</h1><form method="POST">' + ul + '<input type="submit" name="accept" value="Accept"/><input type="submit" name="cancel" value="Cancel"/></form>' + error;
+    res.send('<html>' + head + body + '</html>');
+});
+
+// User submit consent form
+app.post('/users/consent', function(req, res) {
+
+
+});
 
 
 // Create a client

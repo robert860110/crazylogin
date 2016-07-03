@@ -103,7 +103,7 @@ var clientSchema = new Schema({
 // create a Auth schema
 var authSchema = new Schema({
     client: { type: Schema.ObjectId, ref: 'Client' },
-    scope: { type: String, required: true, unique: true },
+    scope: { type: Array, required: true},
     user: { type: Schema.ObjectId, ref: 'User' },
     sub: { type: String, required: true },
     code: { type: String, required: true },
