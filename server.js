@@ -197,11 +197,9 @@ app.post('/users', function(req, res) {
                         req.session.error = 'Your account can not be created.';
                         return res.status(401).json(err);
                     }
-                    req.session.regenerate(function() {
-                        req.session.user = user;
-                        req.session.success = 'Authenticated as ' + user.phone_number + ' click to <a href="/logout">logout</a>. ' + ' You may now access <a href="/restricted">/restricted</a>.';
-                        return res.redirect('/consent');
-                    });
+                    req.session.user = user;
+                    req.session.success = 'Authenticated as ' + user.phone_number + ' click to <a href="/logout">logout</a>. ' + ' You may now access <a href="/restricted">/restricted</a>.';
+                    return res.redirect(req.session.authorize_url);
                 });
             });
         }
@@ -465,6 +463,29 @@ app.post('/users/token', function(req, res) {
             }
         });
     }
+});
+
+
+// Userinfo endpoint
+app.get('/api/userInfo', function(req, res) {
+
+    var reqParameters = querystring.parse(url.parse(req.url).query);
+
+    db.Access.findOne({ token: reqParameters.access_token }).exec(function(err, access) {
+
+        console.log(access);
+
+        if (!err && access) {
+            db.User.findOne({ _id: access.user }).exec(function(err, user) {
+                return res.json({
+                    email: user.email,
+                    phone: user.phone_number
+                });
+            });
+        } else {
+            return res.status(400).json(err);
+        }
+    });
 });
 
 

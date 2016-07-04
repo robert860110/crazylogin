@@ -1,109 +1,94 @@
 <!doctype html>
-<html lang="en" class="no-js">
+<html lang="en">
 
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <link href='http://fonts.googleapis.com/css?family=PT+Sans:400,700' rel='stylesheet' type='text/css'>
-    <link rel="stylesheet" href="css/reset.css">
-    <!-- CSS reset -->
     <link rel="stylesheet" href="css/style.css">
-    <!-- Gem style -->
-    <script src="js/modernizr.js"></script>
-    <!-- Modernizr -->
+    <!-- Latest compiled and minified CSS -->
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.6/css/bootstrap.min.css" integrity="sha384-1q8mTJOASx8j1Au+a5WDVnPi2lkFfwwEAa8hDDdjZlpLegxhjVME1fgjWPGmkzs7" crossorigin="anonymous">
     <title>Log In &amp; Sign Up Form</title>
 </head>
 
 <body>
-
-    <div class="cd-user-modal">
-        <!-- this is the entire modal form, including the background -->
-        <div class="cd-user-modal-container">
-            <!-- this is the container wrapper -->
-            <ul class="cd-switcher">
-                <li><a href="#0">Sign in</a></li>
-                <li><a href="#0">New account</a></li>
-            </ul>
-            <div id="cd-login">
-                <!-- log in form -->
-                <form class="cd-form">
-                    <p class="fieldset">
-                        <label class="image-replace cd-email" for="signin-phone">Phone</label>
-                        <input class="full-width has-padding has-border" id="signin-phone" type="text" placeholder="Enter Your Phone Number">
-                        <span class="cd-error-message">Enter your phone number here!</span>
-                    </p>
-                    <p class="fieldset confirmationCode-login">
-                        <label class="image-replace cd-password" for="signin-password">Password</label>
-                        <input class="full-width has-padding has-border" id="signin-password" type="text" placeholder="Enter Confirmation Code">
-                        <a href="#0" class="hide-password">Hide</a>
-                        <span class="cd-error-message">Enter your confirmation code here!</span>
-                    </p>
-                    <p class="fieldset confirmationCode-login">
-                        <input type="checkbox" id="remember-me" checked>
-                        <label for="remember-me">Remember me</label>
-                    </p>
-                    <p class="fieldset">
-                        <input class="full-width" id="button-login" type="submit" value="Send Confirmation Code">
-                    </p>
-                </form>
-                <p class="cd-form-bottom-message confirmationCode-login"><a href="#0">Didn't get your confirmation code?</a></p>
-                <!-- <a href="#0" class="cd-close-form">Close</a> -->
+    <div class="container">
+        <div class="row">
+            <div class="col-md-6 col-md-offset-3">
+                <div class="panel panel-login">
+                    <div class="panel-heading">
+                        <div class="row">
+                            <div class="col-xs-6">
+                                <a href="#" class="active" id="login-form-link">Login</a>
+                            </div>
+                            <div class="col-xs-6">
+                                <a href="#" id="register-form-link">Register</a>
+                            </div>
+                        </div>
+                        <hr>
+                    </div>
+                    <div class="panel-body">
+                        <div class="row">
+                            <div class="col-lg-12">
+                                <form id="login-form" action="http://phpoll.com/login/process" method="post" role="form" style="display: block;">
+                                    <div class="form-group">
+                                        <input type="text" name="username" id="username" tabindex="1" class="form-control" placeholder="Username" value="">
+                                    </div>
+                                    <div class="form-group">
+                                        <input type="password" name="password" id="password" tabindex="2" class="form-control" placeholder="Password">
+                                    </div>
+                                    <div class="form-group text-center">
+                                        <input type="checkbox" tabindex="3" class="" name="remember" id="remember">
+                                        <label for="remember"> Remember Me</label>
+                                    </div>
+                                    <div class="form-group">
+                                        <div class="row">
+                                            <div class="col-sm-6 col-sm-offset-3">
+                                                <input type="submit" name="login-submit" id="login-submit" tabindex="4" class="form-control btn btn-login" value="Log In">
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="form-group">
+                                        <div class="row">
+                                            <div class="col-lg-12">
+                                                <div class="text-center">
+                                                    <a href="http://phpoll.com/recover" tabindex="5" class="forgot-password">Forgot Password?</a>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </form>
+                                <form id="register-form" action="http://phpoll.com/register/process" method="post" role="form" style="display: none;">
+                                    <div class="form-group">
+                                        <input type="text" name="username" id="username" tabindex="1" class="form-control" placeholder="Enter your phone number" value="">
+                                    </div>
+                                    <div class="form-group">
+                                        <input type="email" name="email" id="email" tabindex="1" class="form-control" placeholder="Email Address" value="">
+                                    </div>
+                                    <div class="form-group">
+                                        <input type="password" name="password" id="password" tabindex="2" class="form-control" placeholder="Password">
+                                    </div>
+                                    <div class="form-group">
+                                        <input type="password" name="confirm-password" id="confirm-password" tabindex="2" class="form-control" placeholder="Confirm Password">
+                                    </div>
+                                    <div class="form-group">
+                                        <div class="row">
+                                            <div class="col-sm-6 col-sm-offset-3">
+                                                <input type="submit" name="register-submit" id="register-submit" tabindex="4" class="form-control btn btn-register" value="Register Now">
+                                            </div>
+                                        </div>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
-            <!-- cd-login -->
-            <div id="cd-signup">
-                <!-- sign up form -->
-                <form class="cd-form">
-                    <p class="fieldset">
-                        <label class="image-replace cd-username" for="signup-email">E-mail</label>
-                        <input class="full-width has-padding has-border" id="signup-email" type="email" placeholder="Enter Your Email">
-                        <span class="cd-error-message">Enter your email here!</span>
-                    </p>
-                    <p class="fieldset">
-                        <label class="image-replace cd-email" for="signup-phone">Phone</label>
-                        <input class="full-width has-padding has-border" id="signup-phone" type="text" placeholder="Enter Your Phone Number">
-                        <span class="cd-error-message">Enter your phone number here!</span>
-                    </p>
-                    <p class="fieldset confirmationCode-signup">
-                        <label class="image-replace cd-password" for="signup-password">Password</label>
-                        <input class="full-width has-padding has-border" id="signup-password" type="text" placeholder="Enter Confirmation Code">
-                        <a href="#0" class="hide-password">Hide</a>
-                        <span class="cd-error-message">Enter the confirmation code here!</span>
-                    </p>
-                    <p class="fieldset confirmationCode-signup">
-                        <input type="checkbox" id="accept-terms">
-                        <label for="accept-terms">I agree to the <a href="#0">Terms</a></label>
-                    </p>
-                    <p class="fieldset">
-                        <input class="full-width has-padding" id="button-signup" type="submit" value="Send Confirmation Code">
-                    </p>
-                </form>
-                <!-- <a href="#0" class="cd-close-form">Close</a> -->
-            </div>
-            <!-- cd-signup -->
-            <div id="cd-reset-password">
-                <!-- reset password form -->
-                <p class="cd-form-message">Didn't receive your confirmation code? Please enter your phone number and try again...</p>
-                <form class="cd-form">
-                    <p class="fieldset">
-                        <label class="image-replace cd-email" for="reset-phone">Phone</label>
-                        <input class="full-width has-padding has-border" id="reset-phone" type="text" placeholder="Enter Your Phone Number">
-                        <span class="cd-error-message">Enter your phone number here!</span>
-                    </p>
-                    <p class="fieldset">
-                        <input class="full-width has-padding" id="button-resend" type="submit" value="Resend Confirmation Code">
-                    </p>
-                </form>
-                <p class="cd-form-bottom-message"><a href="#0">Back to log-in</a></p>
-            </div>
-            <!-- cd-reset-password -->
-            <a href="#0" class="cd-close-form">Close</a>
         </div>
-        <!-- cd-user-modal-container -->
     </div>
-    <!-- cd-user-modal -->
     <script src="http://ajax.googleapis.com/ajax/libs/jquery/1.11.0/jquery.min.js"></script>
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.6/js/bootstrap.min.js" integrity="sha384-0mSbJDEHialfmuBBQP6A4Qrprq5OVfW37PRR3j5ELqxss1yVqOtnepnHVP9aJ7xS" crossorigin="anonymous"></script>
     <script src="js/main.js"></script>
-    <!-- Gem jQuery -->
+    <!--  jQuery -->
 </body>
 
 </html>
