@@ -325,15 +325,16 @@ app.get('/users/authorize', function(req, res) {
 
 // Render user consent form
 app.get('/users/consent', function(req, res, next) {
-    var head = '<head><title>Consent</title></head>';
-    var lis = [];
-    for (var i in req.session.scope) {
-        lis.push('<li><b>' + i + '</b>: ' + req.session.scope[i] + '</li>');
-    }
-    var ul = '<ul>' + lis.join('') + '</ul>';
-    var error = req.session.error ? '<div>' + req.session.error + '</div>' : '';
-    var body = '<body><h1>Consent</h1><form method="POST">' + ul + '<input type="submit" name="accept" value="Accept"/><input type="submit" name="cancel" value="Cancel"/></form>' + error;
-    res.send('<html>' + head + body + '</html>');
+    // var head = '<head><title>Consent</title></head>';
+    // var lis = [];
+    // for (var i in req.session.scope) {
+    //     lis.push('<li><b>' + i + '</b>: ' + req.session.scope[i] + '</li>');
+    // }
+    // var ul = '<ul>' + lis.join('') + '</ul>';
+    // var error = req.session.error ? '<div>' + req.session.error + '</div>' : '';
+    // var body = '<body><h1>Consent</h1><form method="POST">' + ul + '<input type="submit" name="accept" value="Accept"/><input type="submit" name="cancel" value="Cancel"/></form>' + error;
+    // res.send('<html>' + head + body + '</html>');
+    res.sendFile(__dirname + '/public' + '/consent.html');
 });
 
 // User submit consent form

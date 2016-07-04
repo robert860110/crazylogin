@@ -70,38 +70,38 @@
                         <div class="form-group">
                             <label for="email" class="col-md-3 control-label">Email</label>
                             <div class="col-md-9">
-                                <input type="text" class="form-control" name="email" placeholder="Email Address">
+                                <input type="text" id="signup-email" class="form-control" name="email" placeholder="Email Address">
                             </div>
                         </div>
-                        <div class="form-group">
+                        <!-- <div class="form-group">
                             <label for="firstname" class="col-md-3 control-label">First Name</label>
                             <div class="col-md-9">
-                                <input type="text" class="form-control" name="firstname" placeholder="First Name">
+                                <input type="text" id="signup-firstname" class="form-control" name="firstname" placeholder="First Name">
                             </div>
                         </div>
                         <div class="form-group">
                             <label for="lastname" class="col-md-3 control-label">Last Name</label>
                             <div class="col-md-9">
-                                <input type="text" class="form-control" name="lastname" placeholder="Last Name">
+                                <input type="text" id="signup-lastname" class="form-control" name="lastname" placeholder="Last Name">
+                            </div>
+                        </div> -->
+                        <div class="form-group">
+                            <label for="password" class="col-md-3 control-label">Phone #</label>
+                            <div class="col-md-9">
+                                <input type="text" id="signup-phone_number" class="form-control" name="phone_number" placeholder="phone number">
                             </div>
                         </div>
                         <div class="form-group">
-                            <label for="password" class="col-md-3 control-label">Password</label>
+                            <label for="icode" class="col-md-3 control-label">Passcode</label>
                             <div class="col-md-9">
-                                <input type="password" class="form-control" name="passwd" placeholder="Password">
-                            </div>
-                        </div>
-                        <div class="form-group">
-                            <label for="icode" class="col-md-3 control-label">Invitation Code</label>
-                            <div class="col-md-9">
-                                <input type="text" class="form-control" name="icode" placeholder="">
+                                <input type="text" id="signup-password" class="form-control" name="password" placeholder="SMS passcode">
                             </div>
                         </div>
                         <div style="margin-top:10px" class="form-group">
                             <!-- Button -->
                             <div class="col-sm-12 controls">
                                 <a id="btn-signup" href="#" class="btn btn-success">SignUp  </a>
-                                <a id="btn-sendCode" href="#" class="btn btn-primary">Send SMS Passcode</a>
+                                <a id="btn-signup-sendCode" href="#" class="btn btn-primary">Send SMS Passcode</a>
                             </div>
                         </div>
                     </form>
@@ -131,7 +131,6 @@
             });
         });
 
-
         $('#btn-login').click(function(e) {
             var data = {};
             data.phone_number = $('#login-phone_number').val();
@@ -141,6 +140,37 @@
                 '<input type="hidden" name="password" value="' + data.password + '">' +
                 '</form>').submit();
 
+        });
+
+        $("#btn-signup-sendCode").click(function(e) {
+            e.preventDefault();
+            var data = {};
+            data.phone_number = $('#signup-phone_number').val();
+            $.ajax({
+                type: 'POST',
+                url: 'http://localhost:3000/sendCode',
+                data: JSON.stringify(data),
+                dataType: "json",
+                contentType: "application/json; charset=utf-8",
+                error: function(error) {
+                    alert(error.messages);
+                },
+                success: function(msg) {
+                    console.log(msg);
+                }
+            });
+        });
+
+        $('#btn-signup').click(function(e) {
+            var data = {};
+            data.email = $('#signup-email').val();
+            data.phone_number = $('#signup-phone_number').val();
+            data.password = $('#signup-password').val();
+            $('<form action="/users" method="POST">' +
+                '<input type="hidden" name="phone_number" value="' + data.phone_number + '">' +
+                '<input type="hidden" name="email" value="' + data.email + '">' +
+                '<input type="hidden" name="password" value="' + data.password + '">' +
+                '</form>').submit();
         });
     });
     </script>
