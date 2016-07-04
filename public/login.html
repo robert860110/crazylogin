@@ -118,7 +118,7 @@
             data.phone_number = $('#login-phone_number').val();
             $.ajax({
                 type: 'POST',
-                url: 'http://localhost:3000/sendCode',
+                url: '/sendCode',
                 data: JSON.stringify(data),
                 dataType: "json",
                 contentType: "application/json; charset=utf-8",
@@ -148,7 +148,7 @@
             data.phone_number = $('#signup-phone_number').val();
             $.ajax({
                 type: 'POST',
-                url: 'http://localhost:3000/sendCode',
+                url: '/sendCode',
                 data: JSON.stringify(data),
                 dataType: "json",
                 contentType: "application/json; charset=utf-8",
